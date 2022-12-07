@@ -1,0 +1,28 @@
+#!/bin/bash
+ 
+## Example usage: $ rmwav 2 *.wav
+## This command says to execute script rmwav, delete any wav files under 2 sec in length, and delete any low amplitude (silent) wav files.
+Sec=$1 # max duration limit for files to be deleted
+Max=0.001 # Any amplitude greater than this will NOT be listed
+OutList=~/output.list # The name of the file that contains a
+
+find * -size 0 -delete #this command deletes any files of size 0kb - an Ableton Live bug.
+
+for each in "$@" #This loop checks amplitude, if the file is essentially silent or has a nearly inaudible noise floor, delete it.
+do amplitude=$(sox "$each" -n stat 2>&1 | grep "Maximum amplitude" | cut -d ":" -f 2 | sed 's/ //g')
+if [[ $(echo "if (${amplitude} > ${Max}) 1 else 0" | bc) -eq 0 ]]
+then echo "$each --> $amplitude" >&2
+echo "$each" >> $OutList
+rm -f "$each"
+fi
+done
+
+for each in "$@" #This loop checks duration, if the file is less than or equal to the sec value passed in as first variable in shell cmd, delete it.
+do duration=$(soxi -D "$each")
+if [[ $(echo "if (${duration} >= ${Sec}) 1 else 0" | bc) -eq 0 ]]
+then echo "$each --> $duration" >&2
+echo "$each" >> $OutList
+rm -f "$each"
+fi
+done
+
